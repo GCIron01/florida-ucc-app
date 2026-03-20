@@ -1,0 +1,6 @@
+streamlit
+pandas
+pgeocode
+geopy
+sqlalchemy
+psycopg2-binary
