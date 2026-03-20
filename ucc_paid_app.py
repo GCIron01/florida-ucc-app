@@ -9,7 +9,6 @@ st.markdown("""
 <style>
     .big-font {font-size: 2.8rem !important; font-weight: bold; color: #1E3A8A;}
     .stButton>button {width: 100%; height: 3.2em; font-size: 1.1em;}
-    .premium-card {background-color: #f8f9fa; padding: 20px; border-radius: 10px;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -38,6 +37,21 @@ def load_data():
 
 df = load_data()
 
+# ====================== REORDER COLUMNS (Debtor left → Secured right) ======================
+desired_order = [
+    'Ucc1FilingNumber',
+    # === DEBTOR BLOCK (left side) ===
+    'DebName', 'DebNameFormat', 'DebAddressLine1', 'DebAddressLine2', 'DebCity', 'DebState',
+    'DebZipCode', 'DebCountry', 'DebRefNumber', 'DebRelToFiling', 'DebOrigParty', 'DebFilingStatus',
+    # === SECURED PARTY BLOCK (right side) ===
+    'SecName', 'SecNameFormat', 'SecAddressLine1', 'SecAddressLine2', 'SecCity', 'SecStateProvince',
+    'SecZipCode', 'SecCountry', 'SecRefNumber', 'SecRelToFiling', 'SecOrigParty', 'SecFilingStatus'
+]
+
+# Only keep columns that actually exist
+available_cols = [col for col in desired_order if col in df.columns]
+df = df[available_cols]
+
 tab1, tab2, tab3, tab4 = st.tabs(["📊 Stats", "🔍 Name Search", "📍 Radius Search", "📋 Recent Filings"])
 
 # ====================== TAB 1: STATS ======================
@@ -48,7 +62,7 @@ with tab1:
     with col3: st.metric("Updated", datetime.now().strftime("%b %d, %Y"))
     st.success("✅ Stats always free")
 
-# ====================== TAB 2: NAME SEARCH (FREE PREVIEW) ======================
+# ====================== TAB 2: NAME SEARCH ======================
 with tab2:
     st.subheader("🔍 Search by Debtor / Business Name")
     search_term = st.text_input("Type name or UCC number:", placeholder="e.g. ABC Construction LLC", key="search")
@@ -78,12 +92,11 @@ with tab2:
 with tab3:
     st.subheader("📍 Radius Search (Premium)")
     st.info("Search filings near any Florida zip code — **unlocked after subscription**")
-    st.button("Subscribe Now – $19/month", type="primary", key="radius_btn")
 
-# ====================== TAB 4: RECENT FILINGS (NOW 20 RECORDS) ======================
+# ====================== TAB 4: RECENT FILINGS (20 records) ======================
 with tab4:
     st.subheader("📋 Recent UCC Filings — Live Preview")
-    preview = df.head(20).copy()                     # ← changed to 20
+    preview = df.head(20).copy()
     
     st.dataframe(preview, use_container_width=True)
     
