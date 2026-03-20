@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-import sqlite3
+import psycopg2
 from datetime import datetime
 from pathlib import Path
 
@@ -21,22 +21,31 @@ with st.sidebar:
     st.header("Why Subscribe?")
     st.markdown("""
     ✅ UCC on excavators, cranes, loaders, forklifts  
-    ✅ Quick brand & equipment keyword search  
-    ✅ Debtor + Secured Party details side-by-side  
-    ✅ Export samples before you subscribe  
+    ✅ Quick brand & equipment keyword search
+    ✅ Debtor + Secured Party details side-by-side
+    ✅ Export samples before you subscribe
     ✅ Radius + advanced filters  
     ✅ Early access to new filings  
     ✅ No ads • Clean interface
     """)
     st.success("**Only $19/month** — Cancel anytime")
 
-# ====================== LOAD DATA ======================
+# ====================== LOAD DATA FROM SUPABASE ======================
 @st.cache_data(ttl=3600)
 def load_data():
-    conn = sqlite3.connect("ucc_secureds.db")
-    df = pd.read_sql("SELECT * FROM ucc_filings ORDER BY Ucc1FilingNumber DESC", conn)
-    conn.close()
-    return df
+    try:
+        conn = psycopg2.connect(st.secrets["DB_URL"])
+        secured = pd.read_sql("SELECT * FROM secured_filings", conn)
+        debtor = pd.read_sql("SELECT * FROM debtor_filings", conn)
+        conn.close()
+        
+        df = pd.merge(secured, debtor, on="Ucc1FilingNumber", how="left")
+        
+        st.success("✅ Connected to Supabase")
+        return df
+    except Exception as e:
+        st.error(f"Connection error: {str(e)}")
+        return pd.DataFrame()
 
 df = load_data()
 
