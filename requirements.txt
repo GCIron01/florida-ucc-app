@@ -4,4 +4,3 @@ pgeocode
 geopy
 sqlalchemy
 psycopg2-binary
-st-supabase-connection==2.1.3
