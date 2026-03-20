@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import psycopg2
 from datetime import datetime
-from pathlib import Path
 
 st.set_page_config(page_title="Florida Heavy Equipment UCC Premium", layout="wide", page_icon="🏗️", initial_sidebar_state="expanded")
 
@@ -31,7 +30,7 @@ with st.sidebar:
     st.success("**Only $19/month** — Cancel anytime")
 
 # ====================== LOAD DATA FROM SUPABASE ======================
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=3600, show_spinner="Connecting to Supabase...")
 def load_data():
     try:
         conn = psycopg2.connect(st.secrets["DB_URL"])
@@ -41,10 +40,11 @@ def load_data():
         
         df = pd.merge(secured, debtor, on="Ucc1FilingNumber", how="left")
         
-        st.success("✅ Connected to Supabase")
+        st.success("✅ Connected to Supabase successfully!")
         return df
     except Exception as e:
-        st.error(f"Connection error: {str(e)}")
+        st.error(f"❌ Connection error: {str(e)}")
+        st.info("💡 Tip: Make sure you used the **Transaction Pooler** URL (port 6543) in Secrets")
         return pd.DataFrame()
 
 df = load_data()
