@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import psycopg2
 from datetime import datetime
+import pgeocode
+from geopy.distance import geodesic
 
 st.set_page_config(page_title="Florida Heavy Equipment UCC Premium", layout="wide", page_icon="🏗️", initial_sidebar_state="expanded")
 
@@ -36,7 +38,6 @@ def load_data():
         debtor = pd.read_sql("SELECT * FROM debtor_filings", conn)
         conn.close()
         
-        # Safe multi-line merge (prevents copy-paste errors)
         df = pd.merge(
             secured, 
             debtor, 
@@ -52,6 +53,20 @@ def load_data():
 
 df = load_data()
 
+# ====================== ZIP CODE DISTANCE HELPER ======================
+@st.cache_resource
+def get_nomi():
+    return pgeocode.Nominatim('us')
+
+@st.cache_data
+def get_zip_coordinates(zip_code):
+    """Convert 5-digit zip to (lat, lon)"""
+    nomi = get_nomi()
+    location = nomi.query_postal_code(str(zip_code))
+    if pd.isna(location.latitude) or pd.isna(location.longitude):
+        return None
+    return (location.latitude, location.longitude)
+
 # ====================== REORDER COLUMNS ======================
 desired_order = [
     'Ucc1FilingNumber',
@@ -63,7 +78,6 @@ desired_order = [
 available_cols = [col for col in desired_order if col in df.columns]
 df = df[available_cols]
 
-# Safe tabs line
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📊 Stats", 
     "🔍 Name Search", 
@@ -93,44 +107,3 @@ with tab2:
                 st.download_button("📥 Download results as CSV (free)", data=csv,
                                   file_name=f"ucc_search_{search_term.replace(' ', '_')}.csv", mime="text/csv")
             else:
-                st.warning("No matches found")
-
-with tab3:
-    st.subheader("🏗️ Equipment Financing Search")
-    st.markdown("**Quick search common construction & industrial equipment**")
-    keywords = ["Excavator", "Crane", "Loader", "Bulldozer", "Forklift", "Backhoe", "Skid Steer", 
-                "Caterpillar", "John Deere", "Komatsu", "Volvo", "Case", "Kubota", "Tractor"]
-    selected = st.multiselect("Quick keywords", keywords, default=["Excavator", "Caterpillar"])
-    equipment_term = st.text_input("Or custom keyword", placeholder="Bobcat")
-    term = " ".join(selected) if selected else equipment_term
-    if term:
-        with st.spinner("Scanning..."):
-            mask = df.astype(str).apply(lambda x: x.str.contains(term, case=False, na=False)).any(axis=1)
-            results = df[mask].head(15).copy()
-            if not results.empty:
-                st.success(f"**{mask.sum():,} potential equipment liens found**")
-                results['Equipment Match'] = "✅ Likely Equipment Financing"
-                st.dataframe(results, use_container_width=True)
-                csv = results.to_csv(index=False).encode('utf-8')
-                st.download_button("📥 Download these equipment liens (free sample)", data=csv,
-                                  file_name=f"equipment_liens_{term}.csv", mime="text/csv")
-
-with tab4:
-    st.subheader("📍 Radius Search (Premium)")
-    st.info("Search filings near any Florida zip code — **unlocked after subscription**")
-
-with tab5:
-    st.subheader("📋 Recent UCC Filings — Live Preview")
-    preview = df.head(20).copy()
-    st.dataframe(preview, use_container_width=True)
-    csv_all = preview.to_csv(index=False).encode('utf-8')
-    st.download_button("📥 Download these 20 recent filings as CSV (free)", data=csv_all,
-                      file_name="ucc_recent_filings_sample.csv", mime="text/csv")
-    st.caption("Sortable table • Full unlimited export after subscription")
-
-st.markdown("---")
-st.subheader("💰 Ready to unlock everything?")
-if st.button("✅ Subscribe Now — $19/month (cancel anytime)", type="primary", use_container_width=True):
-    st.markdown("[🚀 Go to Secure Stripe Checkout →](https://buy.stripe.com/YOUR_REAL_LINK_HERE)")
-
-st.caption(f"Database updated {datetime.now().strftime('%b %d, %Y')} • {len(df):,} records • Data from official Florida UCC")
