@@ -18,15 +18,13 @@ st.markdown("**Construction & Industrial Equipment Financing UCC Filings**")
 # ====================== SIDEBAR ======================
 with st.sidebar:
     st.header("Why Subscribe?")
-    st.markdown("""
-    ✅ UCC on excavators, cranes, loaders, forklifts  
-    ✅ Quick brand & equipment keyword search
-    ✅ Debtor + Secured Party details side-by-side
-    ✅ Export samples before you subscribe
-    ✅ Radius + advanced filters  
-    ✅ Early access to new filings  
-    ✅ No ads • Clean interface
-    """)
+    st.markdown("✅ **UCC on excavators, cranes, loaders, forklifts**")
+    st.markdown("✅ **Quick brand & equipment keyword search**")
+    st.markdown("✅ **Debtor + Secured Party details side-by-side**")
+    st.markdown("✅ **Export samples before you subscribe**")
+    st.markdown("✅ **Radius + advanced filters**")
+    st.markdown("✅ **Early access to new filings**")
+    st.markdown("✅ **No ads • Clean interface**")
     st.success("**Only $19/month** — Cancel anytime")
 
 # ====================== LOAD DATA FROM SUPABASE ======================
@@ -105,21 +103,4 @@ with tab3:
                                   file_name=f"equipment_liens_{term}.csv", mime="text/csv")
 
 with tab4:
-    st.subheader("📍 Radius Search (Premium)")
-    st.info("Search filings near any Florida zip code — **unlocked after subscription**")
-
-with tab5:
-    st.subheader("📋 Recent UCC Filings — Live Preview")
-    preview = df.head(20).copy()
-    st.dataframe(preview, use_container_width=True)
-    csv_all = preview.to_csv(index=False).encode('utf-8')
-    st.download_button("📥 Download these 20 recent filings as CSV (free)", data=csv_all,
-                      file_name="ucc_recent_filings_sample.csv", mime="text/csv")
-    st.caption("Sortable table • Full unlimited export after subscription")
-
-st.markdown("---")
-st.subheader("💰 Ready to unlock everything?")
-if st.button("✅ Subscribe Now — $19/month (cancel anytime)", type="primary", use_container_width=True):
-    st.markdown("[🚀 Go to Secure Stripe Checkout →](https://buy.stripe.com/YOUR_REAL_LINK_HERE)")
-
-st.caption(f"Database updated {datetime.now().strftime('%b %d, %Y')} • {len(df):,} records • Data from official Florida UCC")
+    st.subheader("📍
