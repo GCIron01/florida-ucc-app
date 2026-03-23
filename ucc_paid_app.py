@@ -36,25 +36,4 @@ def load_data():
         debtor = pd.read_sql("SELECT * FROM debtor_filings", conn)
         conn.close()
         
-        df = pd.merge(secured, debtor, on="Ucc1FilingNumber", how="left")
-        
-        st.success("✅ Connected to Supabase successfully! 🎉")
-        return df
-    except Exception as e:
-        st.error(f"❌ Connection error: {str(e)}")
-        return pd.DataFrame()
-
-df = load_data()
-
-# ====================== REORDER COLUMNS ======================
-desired_order = [
-    'Ucc1FilingNumber',
-    'DebName', 'DebNameFormat', 'DebAddressLine1', 'DebAddressLine2', 'DebCity', 'DebState',
-    'DebZipCode', 'DebCountry', 'DebRefNumber', 'DebRelToFiling', 'DebOrigParty', 'DebFilingStatus',
-    'SecName', 'SecNameFormat', 'SecAddressLine1', 'SecAddressLine2', 'SecCity', 'SecStateProvince',
-    'SecZipCode', 'SecCountry', 'SecRefNumber', 'SecRelToFiling', 'SecOrigParty', 'SecFilingStatus'
-]
-available_cols = [col for col in desired_order if col in df.columns]
-df = df[available_cols]
-
-tab1, tab2, tab3, tab4, tab5 =
+        df = pd.merge(secured, debtor, on="Ucc1FilingNumber", how="
