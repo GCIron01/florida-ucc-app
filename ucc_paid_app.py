@@ -70,37 +70,3 @@ with tab2:
     st.subheader("🔍 General Name Search")
     search_term = st.text_input("Type debtor, business, or UCC number:", placeholder="e.g. ABC Construction LLC")
     if search_term:
-        with st.spinner("Searching..."):
-            mask = df.astype(str).apply(lambda x: x.str.contains(search_term, case=False, na=False)).any(axis=1)
-            results = df[mask].head(10).copy()
-            if not results.empty:
-                st.success(f"**{mask.sum():,} matches found**")
-                st.dataframe(results, use_container_width=True)
-                csv = results.to_csv(index=False).encode('utf-8')
-                st.download_button("📥 Download results as CSV (free)", data=csv,
-                                  file_name=f"ucc_search_{search_term.replace(' ', '_')}.csv", mime="text/csv")
-            else:
-                st.warning("No matches found")
-
-with tab3:
-    st.subheader("🏗️ Equipment Financing Search")
-    st.markdown("**Quick search common construction & industrial equipment**")
-    keywords = ["Excavator", "Crane", "Loader", "Bulldozer", "Forklift", "Backhoe", "Skid Steer", 
-                "Caterpillar", "John Deere", "Komatsu", "Volvo", "Case", "Kubota", "Tractor"]
-    selected = st.multiselect("Quick keywords", keywords, default=["Excavator", "Caterpillar"])
-    equipment_term = st.text_input("Or custom keyword", placeholder="Bobcat")
-    term = " ".join(selected) if selected else equipment_term
-    if term:
-        with st.spinner("Scanning..."):
-            mask = df.astype(str).apply(lambda x: x.str.contains(term, case=False, na=False)).any(axis=1)
-            results = df[mask].head(15).copy()
-            if not results.empty:
-                st.success(f"**{mask.sum():,} potential equipment liens found**")
-                results['Equipment Match'] = "✅ Likely Equipment Financing"
-                st.dataframe(results, use_container_width=True)
-                csv = results.to_csv(index=False).encode('utf-8')
-                st.download_button("📥 Download these equipment liens (free sample)", data=csv,
-                                  file_name=f"equipment_liens_{term}.csv", mime="text/csv")
-
-with tab4:
-    st.subheader("📍
