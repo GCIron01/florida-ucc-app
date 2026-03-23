@@ -60,7 +60,6 @@ def get_nomi():
 
 @st.cache_data
 def get_zip_coordinates(zip_code):
-    """Convert 5-digit zip to (lat, lon)"""
     nomi = get_nomi()
     location = nomi.query_postal_code(str(zip_code))
     if pd.isna(location.latitude) or pd.isna(location.longitude):
@@ -107,3 +106,10 @@ with tab2:
                 st.download_button("📥 Download results as CSV (free)", data=csv,
                                   file_name=f"ucc_search_{search_term.replace(' ', '_')}.csv", mime="text/csv")
             else:
+                st.warning("No matches found")
+
+with tab3:
+    st.subheader("🏗️ Equipment Financing Search")
+    st.markdown("**Quick search common construction & industrial equipment**")
+    keywords = ["Excavator", "Crane", "Loader", "Bulldozer", "Forklift", "Backhoe", "Skid Steer", 
+                "Caterpillar", "John Deere", "Komatsu", "Volvo", "Case", "Kub
