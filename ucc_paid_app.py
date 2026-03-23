@@ -57,16 +57,4 @@ desired_order = [
 available_cols = [col for col in desired_order if col in df.columns]
 df = df[available_cols]
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Stats", "🔍 Name Search", "🏗️ Equipment Financing", "📍 Radius Search", "📋 Recent Filings"])
-
-with tab1:
-    col1, col2, col3 = st.columns(3)
-    with col1: st.metric("Total Filings", f"{len(df):,}")
-    with col2: st.metric("Latest Filing", df['Ucc1FilingNumber'].iloc[0] if not df.empty else "—")
-    with col3: st.metric("Updated", datetime.now().strftime("%b %d, %Y"))
-    st.success("✅ Stats always free")
-
-with tab2:
-    st.subheader("🔍 General Name Search")
-    search_term = st.text_input("Type debtor, business, or UCC number:", placeholder="e.g. ABC Construction LLC")
-    if search_term:
+tab1, tab2, tab3, tab4, tab5 =
