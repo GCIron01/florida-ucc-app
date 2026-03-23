@@ -29,7 +29,7 @@ with st.sidebar:
     st.markdown("✅ **No ads • Clean interface**")
     st.success("**Only $19/month** — Cancel anytime")
 
-# ====================== LOAD DATA FROM SUPABASE (NOW SPECIALIZED) ======================
+# ====================== LOAD DATA FROM SUPABASE ======================
 @st.cache_data(ttl=3600, show_spinner="Loading Construction & Equipment Filings...")
 def load_data():
     try:
@@ -58,13 +58,14 @@ def get_zip_coordinates(zip_code):
         return None
     return (location.latitude, location.longitude)
 
-# ====================== REORDER COLUMNS ======================
+# ====================== REORDER COLUMNS (clean asset details added) ======================
 desired_order = [
     'Ucc1FilingNumber',
     'DebName', 'DebNameFormat', 'DebAddressLine1', 'DebAddressLine2', 'DebCity', 'DebState',
     'DebZipCode', 'DebCountry', 'DebRefNumber', 'DebRelToFiling', 'DebOrigParty', 'DebFilingStatus',
     'SecName', 'SecNameFormat', 'SecAddressLine1', 'SecAddressLine2', 'SecCity', 'SecStateProvince',
-    'SecZipCode', 'SecCountry', 'SecRefNumber', 'SecRelToFiling', 'SecOrigParty', 'SecFilingStatus'
+    'SecZipCode', 'SecCountry', 'SecRefNumber', 'SecRelToFiling', 'SecOrigParty', 'SecFilingStatus',
+    'brand', 'model', 'equipment_type', 'serial_number'   # <-- New clean asset columns
 ]
 
 available_cols = [col for col in desired_order if col in df.columns]
