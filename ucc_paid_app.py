@@ -57,7 +57,7 @@ def get_zip_coordinates(zip_code):
         return None
     return (location.latitude, location.longitude)
 
-# ====================== REORDER COLUMNS (year between brand and model) ======================
+# ====================== SAFE COLUMN REORDERING (year between brand and model) ======================
 desired_order = [
     'Ucc1FilingNumber',
     'DebName', 'DebNameFormat', 'DebAddressLine1', 'DebAddressLine2', 'DebCity', 'DebState',
@@ -65,25 +65,15 @@ desired_order = [
     'SecName', 'SecNameFormat', 'SecAddressLine1', 'SecAddressLine2', 'SecCity', 'SecStateProvince',
     'SecZipCode', 'SecCountry', 'SecRefNumber', 'SecRelToFiling', 'SecOrigParty', 'SecFilingStatus',
     'brand',
-    'year',                    # ← placed exactly between brand and model
+    'year',                    # ← year placed between brand and model
     'model',
     'equipment_type',
     'serial_number'
 ]
 
-# Safe reordering: keep all original columns and insert year in the right spot
-cols = list(df.columns)
-if 'year' in cols:
-    # Remove year if it already exists so we can place it in the right spot
-    cols.remove('year')
-# Insert year after brand
-if 'brand' in cols:
-    brand_idx = cols.index('brand')
-    cols.insert(brand_idx + 1, 'year')
-else:
-    cols.insert(0, 'year')  # fallback position
-
-df = df[cols]
+# Safe reordering: only use columns that actually exist
+available_cols = [col for col in desired_order if col in df.columns]
+df = df[available_cols]
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📊 Stats",
