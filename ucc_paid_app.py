@@ -57,7 +57,7 @@ def get_zip_coordinates(zip_code):
         return None
     return (location.latitude, location.longitude)
 
-# ====================== REORDER COLUMNS ======================
+# ====================== REORDER COLUMNS (year between brand and model) ======================
 desired_order = [
     'Ucc1FilingNumber',
     'DebName', 'DebNameFormat', 'DebAddressLine1', 'DebAddressLine2', 'DebCity', 'DebState',
@@ -65,14 +65,25 @@ desired_order = [
     'SecName', 'SecNameFormat', 'SecAddressLine1', 'SecAddressLine2', 'SecCity', 'SecStateProvince',
     'SecZipCode', 'SecCountry', 'SecRefNumber', 'SecRelToFiling', 'SecOrigParty', 'SecFilingStatus',
     'brand',
-    'year',
+    'year',                    # ← placed exactly between brand and model
     'model',
     'equipment_type',
     'serial_number'
 ]
 
-available_cols = [col for col in desired_order if col in df.columns]
-df = df[available_cols]
+# Safe reordering: keep all original columns and insert year in the right spot
+cols = list(df.columns)
+if 'year' in cols:
+    # Remove year if it already exists so we can place it in the right spot
+    cols.remove('year')
+# Insert year after brand
+if 'brand' in cols:
+    brand_idx = cols.index('brand')
+    cols.insert(brand_idx + 1, 'year')
+else:
+    cols.insert(0, 'year')  # fallback position
+
+df = df[cols]
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📊 Stats",
@@ -107,4 +118,99 @@ with tab2:
             else:
                 st.warning("No matches found")
 
-# ====================== EQUIPMENT FINANCING TAB (ST
+with tab3:
+    st.subheader("🏗️ Equipment Financing Search")
+    st.markdown("**Search by brand, year, model, equipment type, or serial number**")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        brand_list = st.multiselect("Brand", ["CATERPILLAR", "JOHN DEERE", "KUBOTA", "KOMATSU", "CASE", "BOBCAT", "CROWN", "HITACHI", "VOLVO"], default=[])
+        year_list = st.multiselect("Year", ["2026", "2025", "2024", "2023", "2022", "2021", "2017"], default=[])
+    with col2:
+        equipment_list = st.multiselect("Equipment Type", ["COMPACT TRACK LOADER", "EXCAVATOR", "TRACTOR", "WHEEL LOADER", "FORKLIFT", "DOZER", "MOWER", "UTILITY VEHICLE", "SKID STEER"], default=[])
+        model_input = st.text_input("Model", placeholder="e.g. 317G")
+        serial_input = st.text_input("Serial Number", placeholder="e.g. ZE802977")
+
+    if st.button("🔍 Search Equipment Filings", type="primary", use_container_width=True):
+        with st.spinner("Searching equipment columns only..."):
+            mask = pd.Series([True] * len(df), index=df.index)
+
+            if brand_list:
+                mask &= df['brand'].isin(brand_list)
+            if year_list:
+                mask &= df['year'].isin(year_list)
+            if equipment_list:
+                mask &= df['equipment_type'].isin(equipment_list)
+            if model_input:
+                mask &= df['model'].astype(str).str.contains(model_input, case=False, na=False)
+            if serial_input:
+                mask &= df['serial_number'].astype(str).str.contains(serial_input, case=False, na=False)
+
+            results = df[mask].copy()
+
+            if not results.empty:
+                st.success(f"**{len(results):,} equipment financing filings found**")
+                display_cols = ['Ucc1FilingNumber', 'brand', 'year', 'model', 'equipment_type', 'serial_number', 'DebName', 'SecName']
+                display_cols = [col for col in display_cols if col in results.columns]
+                st.dataframe(results[display_cols], use_container_width=True)
+
+                csv = results.to_csv(index=False).encode('utf-8')
+                st.download_button("📥 Download these equipment financing results", data=csv,
+                                  file_name="equipment_financing_search.csv", mime="text/csv")
+            else:
+                st.warning("No matching equipment filings found.")
+
+with tab4:
+    st.subheader("📍 Radius Search (Premium)")
+    st.markdown("**Find UCC filings within X miles of any Florida zip code**")
+    col_a, col_b = st.columns([3, 2])
+    with col_a:
+        zip_code = st.text_input("Enter Florida Zip Code", placeholder="33101", max_chars=5)
+    with col_b:
+        radius_miles = st.slider("Search Radius (miles)", min_value=5, max_value=150, value=25, step=5)
+    if st.button("🔍 Search Within Radius", type="primary", use_container_width=True):
+        if len(zip_code) == 5 and zip_code.isdigit():
+            with st.spinner(f"Calculating distances within {radius_miles} miles..."):
+                center_coords = get_zip_coordinates(zip_code)
+                if center_coords is None:
+                    st.error("❌ Invalid zip code or no coordinates found.")
+                else:
+                    def calculate_distance(row):
+                        if pd.isna(row.get('DebZipCode')):
+                            return None
+                        deb_coords = get_zip_coordinates(str(int(row['DebZipCode'])))
+                        if deb_coords:
+                            return geodesic(center_coords, deb_coords).miles
+                        return None
+                   
+                    df_temp = df.copy()
+                    df_temp['Distance_Miles'] = df_temp.apply(calculate_distance, axis=1)
+                    results = df_temp[df_temp['Distance_Miles'] <= radius_miles].copy()
+                    results = results.sort_values('Distance_Miles').head(100)
+                   
+                    if not results.empty:
+                        st.success(f"🎉 **{len(results):,} filings found within {radius_miles} miles**")
+                        st.dataframe(results, use_container_width=True)
+                        csv = results.to_csv(index=False).encode('utf-8')
+                        st.download_button("📥 Download Full Results as CSV (Premium)", data=csv,
+                                          file_name=f"radius_search_{zip_code}_{radius_miles}miles.csv", mime="text/csv")
+                    else:
+                        st.warning("No filings found in this radius.")
+        else:
+            st.error("Please enter a valid 5-digit Florida zip code.")
+
+with tab5:
+    st.subheader("📋 Recent UCC Filings — Live Preview")
+    preview = df.head(20).copy()
+    st.dataframe(preview, use_container_width=True)
+    csv_all = preview.to_csv(index=False).encode('utf-8')
+    st.download_button("📥 Download these 20 recent filings as CSV (free)", data=csv_all,
+                      file_name="ucc_recent_filings_sample.csv", mime="text/csv")
+    st.caption("Sortable table • Full unlimited export after subscription")
+
+st.markdown("---")
+st.subheader("💰 Ready to unlock everything?")
+if st.button("✅ Subscribe Now — $19/month (cancel anytime)", type="primary", use_container_width=True):
+    st.markdown("[🚀 Go to Secure Stripe Checkout →](https://buy.stripe.com/YOUR_REAL_LINK_HERE)")
+
+st.caption(f"Database updated {datetime.now().strftime('%b %d, %Y')} • {len(df):,} records • Data from official Florida UCC")
