@@ -57,7 +57,7 @@ def get_zip_coordinates(zip_code):
         return None
     return (location.latitude, location.longitude)
 
-# ====================== SAFE COLUMN REORDERING (year between brand and model) ======================
+# ====================== REORDER COLUMNS (year between brand and model) ======================
 desired_order = [
     'Ucc1FilingNumber',
     'DebName', 'DebNameFormat', 'DebAddressLine1', 'DebAddressLine2', 'DebCity', 'DebState',
@@ -65,13 +65,12 @@ desired_order = [
     'SecName', 'SecNameFormat', 'SecAddressLine1', 'SecAddressLine2', 'SecCity', 'SecStateProvince',
     'SecZipCode', 'SecCountry', 'SecRefNumber', 'SecRelToFiling', 'SecOrigParty', 'SecFilingStatus',
     'brand',
-    'year',                    # ← year placed between brand and model
+    'year',
     'model',
     'equipment_type',
     'serial_number'
 ]
 
-# Safe reordering: only use columns that actually exist
 available_cols = [col for col in desired_order if col in df.columns]
 df = df[available_cols]
 
@@ -108,18 +107,17 @@ with tab2:
             else:
                 st.warning("No matches found")
 
+# ====================== EQUIPMENT FINANCING TAB (3 DROPDOWNS ONLY) ======================
 with tab3:
     st.subheader("🏗️ Equipment Financing Search")
-    st.markdown("**Search by brand, year, model, equipment type, or serial number**")
+    st.markdown("**Search by Brand, Equipment Type, or Model**")
 
     col1, col2 = st.columns(2)
     with col1:
         brand_list = st.multiselect("Brand", ["CATERPILLAR", "JOHN DEERE", "KUBOTA", "KOMATSU", "CASE", "BOBCAT", "CROWN", "HITACHI", "VOLVO"], default=[])
-        year_list = st.multiselect("Year", ["2026", "2025", "2024", "2023", "2022", "2021", "2017"], default=[])
-    with col2:
         equipment_list = st.multiselect("Equipment Type", ["COMPACT TRACK LOADER", "EXCAVATOR", "TRACTOR", "WHEEL LOADER", "FORKLIFT", "DOZER", "MOWER", "UTILITY VEHICLE", "SKID STEER"], default=[])
-        model_input = st.text_input("Model", placeholder="e.g. 317G")
-        serial_input = st.text_input("Serial Number", placeholder="e.g. ZE802977")
+    with col2:
+        model_input = st.text_input("Model", placeholder="e.g. 317G or 275-05XE")
 
     if st.button("🔍 Search Equipment Filings", type="primary", use_container_width=True):
         with st.spinner("Searching equipment columns only..."):
@@ -127,14 +125,10 @@ with tab3:
 
             if brand_list:
                 mask &= df['brand'].isin(brand_list)
-            if year_list:
-                mask &= df['year'].isin(year_list)
             if equipment_list:
                 mask &= df['equipment_type'].isin(equipment_list)
             if model_input:
                 mask &= df['model'].astype(str).str.contains(model_input, case=False, na=False)
-            if serial_input:
-                mask &= df['serial_number'].astype(str).str.contains(serial_input, case=False, na=False)
 
             results = df[mask].copy()
 
