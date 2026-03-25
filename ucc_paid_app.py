@@ -36,7 +36,7 @@ def load_data():
         conn = psycopg2.connect(st.secrets["DB_URL"])
         df = pd.read_sql("SELECT * FROM construction_equipment_filings", conn)
         conn.close()
-        
+       
         st.success("✅ Connected to Supabase — Showing ONLY Construction & Equipment Lenders!")
         return df
     except Exception as e:
@@ -58,24 +58,25 @@ def get_zip_coordinates(zip_code):
         return None
     return (location.latitude, location.longitude)
 
-# ====================== REORDER COLUMNS (clean asset details added) ======================
+# ====================== REORDER COLUMNS (added year column) ======================
 desired_order = [
     'Ucc1FilingNumber',
+    'year',                    # ← NEW: year column added here
     'DebName', 'DebNameFormat', 'DebAddressLine1', 'DebAddressLine2', 'DebCity', 'DebState',
     'DebZipCode', 'DebCountry', 'DebRefNumber', 'DebRelToFiling', 'DebOrigParty', 'DebFilingStatus',
     'SecName', 'SecNameFormat', 'SecAddressLine1', 'SecAddressLine2', 'SecCity', 'SecStateProvince',
     'SecZipCode', 'SecCountry', 'SecRefNumber', 'SecRelToFiling', 'SecOrigParty', 'SecFilingStatus',
-    'brand', 'model', 'equipment_type', 'serial_number'   # <-- New clean asset columns
+    'brand', 'model', 'equipment_type', 'serial_number'
 ]
 
 available_cols = [col for col in desired_order if col in df.columns]
 df = df[available_cols]
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "📊 Stats", 
-    "🔍 Name Search", 
-    "🏗️ Equipment Financing", 
-    "📍 Radius Search", 
+    "📊 Stats",
+    "🔍 Name Search",
+    "🏗️ Equipment Financing",
+    "📍 Radius Search",
     "📋 Recent Filings"
 ])
 
@@ -83,7 +84,7 @@ with tab1:
     col1, col2, col3 = st.columns(3)
     with col1: st.metric("Total Filings", f"{len(df):,}")
     with col2: st.metric("Latest Filing", df['Ucc1FilingNumber'].iloc[0] if not df.empty else "—")
-    with col3: 
+    with col3:
         today = datetime.now().strftime("%b %d, %Y")
         st.metric("Updated", today)
     st.success("✅ Stats always free")
@@ -125,17 +126,17 @@ with tab3:
                 csv = results.to_csv(index=False).encode('utf-8')
                 st.download_button("📥 Download these equipment liens (free sample)", data=csv,
                                   file_name=f"equipment_liens_{term}.csv", mime="text/csv")
+            else:
+                st.warning("No matches found")
 
 with tab4:
     st.subheader("📍 Radius Search (Premium)")
     st.markdown("**Find UCC filings within X miles of any Florida zip code**")
-
     col_a, col_b = st.columns([3, 2])
     with col_a:
         zip_code = st.text_input("Enter Florida Zip Code", placeholder="33101", max_chars=5)
     with col_b:
         radius_miles = st.slider("Search Radius (miles)", min_value=5, max_value=150, value=25, step=5)
-
     if st.button("🔍 Search Within Radius", type="primary", use_container_width=True):
         if len(zip_code) == 5 and zip_code.isdigit():
             with st.spinner(f"Calculating distances within {radius_miles} miles..."):
@@ -150,12 +151,12 @@ with tab4:
                         if deb_coords:
                             return geodesic(center_coords, deb_coords).miles
                         return None
-                    
+                   
                     df_temp = df.copy()
                     df_temp['Distance_Miles'] = df_temp.apply(calculate_distance, axis=1)
                     results = df_temp[df_temp['Distance_Miles'] <= radius_miles].copy()
                     results = results.sort_values('Distance_Miles').head(100)
-                    
+                   
                     if not results.empty:
                         st.success(f"🎉 **{len(results):,} filings found within {radius_miles} miles**")
                         st.dataframe(results, use_container_width=True)
