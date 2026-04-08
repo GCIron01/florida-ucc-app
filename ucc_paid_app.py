@@ -193,4 +193,3 @@ if st.button("✅ Subscribe Now — $19/month (cancel anytime)", type="primary",
     st.markdown("[🚀 Go to Secure Stripe Checkout →](https://buy.stripe.com/YOUR_REAL_LINK_HERE)")
 
 st.caption(f"Database updated {datetime.now().strftime('%b %d, %Y')} • {len(df):,} records • Data from official Florida UCC")
-EOF
