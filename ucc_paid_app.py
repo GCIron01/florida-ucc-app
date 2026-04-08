@@ -29,8 +29,8 @@ with st.sidebar:
     st.markdown("✅ **No ads • Clean interface**")
     st.success("**Only $19/month** — Cancel anytime")
 
-# ====================== CONNECTION & CACHING ======================
-DB_URL = "postgresql://postgres.kffjahvpapxekbjfhinm:%21Lift1000o7@db.kffjahvpapxekbjfhinm.supabase.co:6543/postgres"
+# ====================== HARD-CODED WORKING CONNECTION ======================
+DB_URL = "postgresql://postgres.kffjahvpapxekbjfhinm:%21Lift1000o7@aws-1-us-east-2.pooler.supabase.com:5432/postgres"
 
 @st.cache_data(ttl=7200, show_spinner="Loading Construction & Equipment Filings…")
 def load_data():
@@ -47,7 +47,7 @@ def load_data():
         """
         df = pd.read_sql(query, conn)
         conn.close()
-        st.success("✅ Connected to Supabase — 49,176 clean records loaded")
+        st.success(f"✅ Connected to Supabase — {len(df):,} clean records loaded")
         return df
     except Exception as e:
         st.error(f"❌ Connection error: {str(e)}")
@@ -56,7 +56,7 @@ def load_data():
 
 df = load_data()
 
-# ====================== REST OF YOUR APP (unchanged) ======================
+# ====================== ZIP CODE HELPER ======================
 @st.cache_resource
 def get_nomi():
     return pgeocode.Nominatim('us')
@@ -69,7 +69,7 @@ def get_zip_coordinates(zip_code):
         return None
     return (location.latitude, location.longitude)
 
-# Reorder columns
+# ====================== REORDER COLUMNS ======================
 desired_order = [
     'Ucc1FilingNumber', 'DebName', 'DebNameFormat', 'DebAddressLine1', 'DebAddressLine2',
     'DebCity', 'DebState', 'DebZipCode', 'DebCountry', 'DebRefNumber',
@@ -80,6 +80,7 @@ desired_order = [
 available_cols = [col for col in desired_order if col in df.columns]
 df = df[available_cols]
 
+# ====================== TABS ======================
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📊 Stats", "🔍 Name Search", "🏗️ Equipment Financing", "📍 Radius Search", "📋 Recent Filings"
 ])
@@ -104,7 +105,7 @@ with tab2:
                 st.success(f"**{mask.sum():,} matches found**")
                 st.dataframe(results, use_container_width=True)
                 csv = results.to_csv(index=False).encode('utf-8')
-                st.download_button("📥 Download results as CSV (free)", data=csv,
+                st.download_button("📥 Download results as CSV", data=csv,
                                   file_name=f"ucc_search_{search_term.replace(' ', '_')}.csv", mime="text/csv")
             else:
                 st.warning("No matches found")
@@ -119,7 +120,7 @@ with tab3:
     with col2:
         model_input = st.text_input("Model", placeholder="e.g. 317G or 275-05XE")
     if st.button("🔍 Search Equipment Filings", type="primary", use_container_width=True):
-        with st.spinner("Searching equipment columns only..."):
+        with st.spinner("Searching..."):
             mask = pd.Series([True] * len(df), index=df.index)
             if brand_list:
                 mask &= df['brand'].isin(brand_list)
@@ -134,8 +135,7 @@ with tab3:
                 display_cols = [col for col in display_cols if col in results.columns]
                 st.dataframe(results[display_cols], use_container_width=True)
                 csv = results.to_csv(index=False).encode('utf-8')
-                st.download_button("📥 Download these equipment financing results", data=csv,
-                                  file_name="equipment_financing_search.csv", mime="text/csv")
+                st.download_button("📥 Download results", data=csv, file_name="equipment_financing_search.csv", mime="text/csv")
             else:
                 st.warning("No matching equipment filings found.")
 
@@ -171,7 +171,7 @@ with tab4:
                         st.success(f"🎉 **{len(results):,} filings found within {radius_miles} miles**")
                         st.dataframe(results, use_container_width=True)
                         csv = results.to_csv(index=False).encode('utf-8')
-                        st.download_button("📥 Download Full Results as CSV (Premium)", data=csv,
+                        st.download_button("📥 Download Full Results", data=csv,
                                           file_name=f"radius_search_{zip_code}_{radius_miles}miles.csv", mime="text/csv")
                     else:
                         st.warning("No filings found in this radius.")
@@ -183,7 +183,7 @@ with tab5:
     preview = df.head(20).copy()
     st.dataframe(preview, use_container_width=True)
     csv_all = preview.to_csv(index=False).encode('utf-8')
-    st.download_button("📥 Download these 20 recent filings as CSV (free)", data=csv_all,
+    st.download_button("📥 Download these 20 recent filings", data=csv_all,
                       file_name="ucc_recent_filings_sample.csv", mime="text/csv")
     st.caption("Sortable table • Full unlimited export after subscription")
 
@@ -193,3 +193,4 @@ if st.button("✅ Subscribe Now — $19/month (cancel anytime)", type="primary",
     st.markdown("[🚀 Go to Secure Stripe Checkout →](https://buy.stripe.com/YOUR_REAL_LINK_HERE)")
 
 st.caption(f"Database updated {datetime.now().strftime('%b %d, %Y')} • {len(df):,} records • Data from official Florida UCC")
+EOF
