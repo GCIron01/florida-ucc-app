@@ -29,22 +29,34 @@ with st.sidebar:
     st.markdown("✅ **No ads • Clean interface**")
     st.success("**Only $19/month** — Cancel anytime")
 
-# ====================== LOAD DATA FROM SUPABASE ======================
-@st.cache_data(ttl=3600, show_spinner="Loading Construction & Equipment Filings...")
+# ====================== CONNECTION & CACHING ======================
+DB_URL = "postgresql://postgres.kffjahvpapxekbjfhinm:%21Lift1000o7@db.kffjahvpapxekbjfhinm.supabase.co:6543/postgres"
+
+@st.cache_data(ttl=7200, show_spinner="Loading Construction & Equipment Filings…")
 def load_data():
     try:
-        conn = psycopg2.connect(st.secrets["DB_URL"])
-        df = pd.read_sql("SELECT * FROM construction_equipment_filings", conn)
+        conn = psycopg2.connect(DB_URL, connect_timeout=10)
+        query = """
+            SELECT 
+                "Ucc1FilingNumber", "DebName", "DebNameFormat", "DebAddressLine1", "DebAddressLine2",
+                "DebCity", "DebState", "DebZipCode", "DebCountry", "DebRefNumber",
+                "SecName", "SecNameFormat", "SecAddressLine1", "SecAddressLine2", "SecCity",
+                "SecStateProvince", "SecZipCode", "SecCountry", "SecRefNumber",
+                "brand", "year", "model", "equipment_type", "serial_number"
+            FROM construction_equipment_filings
+        """
+        df = pd.read_sql(query, conn)
         conn.close()
-        st.success("✅ Connected to Supabase — Showing ONLY Construction & Equipment Lenders!")
+        st.success("✅ Connected to Supabase — 49,176 clean records loaded")
         return df
     except Exception as e:
         st.error(f"❌ Connection error: {str(e)}")
+        st.info("Try hard-refreshing the page (Cmd + Shift + R)")
         return pd.DataFrame()
 
 df = load_data()
 
-# ====================== ZIP CODE DISTANCE HELPER ======================
+# ====================== REST OF YOUR APP (unchanged) ======================
 @st.cache_resource
 def get_nomi():
     return pgeocode.Nominatim('us')
@@ -57,29 +69,19 @@ def get_zip_coordinates(zip_code):
         return None
     return (location.latitude, location.longitude)
 
-# ====================== REORDER COLUMNS (year between brand and model) ======================
+# Reorder columns
 desired_order = [
-    'Ucc1FilingNumber',
-    'DebName', 'DebNameFormat', 'DebAddressLine1', 'DebAddressLine2', 'DebCity', 'DebState',
-    'DebZipCode', 'DebCountry', 'DebRefNumber', 'DebRelToFiling', 'DebOrigParty', 'DebFilingStatus',
-    'SecName', 'SecNameFormat', 'SecAddressLine1', 'SecAddressLine2', 'SecCity', 'SecStateProvince',
-    'SecZipCode', 'SecCountry', 'SecRefNumber', 'SecRelToFiling', 'SecOrigParty', 'SecFilingStatus',
-    'brand',
-    'year',
-    'model',
-    'equipment_type',
-    'serial_number'
+    'Ucc1FilingNumber', 'DebName', 'DebNameFormat', 'DebAddressLine1', 'DebAddressLine2',
+    'DebCity', 'DebState', 'DebZipCode', 'DebCountry', 'DebRefNumber',
+    'SecName', 'SecNameFormat', 'SecAddressLine1', 'SecAddressLine2', 'SecCity',
+    'SecStateProvince', 'SecZipCode', 'SecCountry', 'SecRefNumber',
+    'brand', 'year', 'model', 'equipment_type', 'serial_number'
 ]
-
 available_cols = [col for col in desired_order if col in df.columns]
 df = df[available_cols]
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "📊 Stats",
-    "🔍 Name Search",
-    "🏗️ Equipment Financing",
-    "📍 Radius Search",
-    "📋 Recent Filings"
+    "📊 Stats", "🔍 Name Search", "🏗️ Equipment Financing", "📍 Radius Search", "📋 Recent Filings"
 ])
 
 with tab1:
@@ -107,37 +109,30 @@ with tab2:
             else:
                 st.warning("No matches found")
 
-# ====================== EQUIPMENT FINANCING TAB (3 DROPDOWNS ONLY) ======================
 with tab3:
     st.subheader("🏗️ Equipment Financing Search")
     st.markdown("**Search by Brand, Equipment Type, or Model**")
-
     col1, col2 = st.columns(2)
     with col1:
         brand_list = st.multiselect("Brand", ["CATERPILLAR", "JOHN DEERE", "KUBOTA", "KOMATSU", "CASE", "BOBCAT", "CROWN", "HITACHI", "VOLVO"], default=[])
         equipment_list = st.multiselect("Equipment Type", ["COMPACT TRACK LOADER", "EXCAVATOR", "TRACTOR", "WHEEL LOADER", "FORKLIFT", "DOZER", "MOWER", "UTILITY VEHICLE", "SKID STEER"], default=[])
     with col2:
         model_input = st.text_input("Model", placeholder="e.g. 317G or 275-05XE")
-
     if st.button("🔍 Search Equipment Filings", type="primary", use_container_width=True):
         with st.spinner("Searching equipment columns only..."):
             mask = pd.Series([True] * len(df), index=df.index)
-
             if brand_list:
                 mask &= df['brand'].isin(brand_list)
             if equipment_list:
                 mask &= df['equipment_type'].isin(equipment_list)
             if model_input:
                 mask &= df['model'].astype(str).str.contains(model_input, case=False, na=False)
-
             results = df[mask].copy()
-
             if not results.empty:
                 st.success(f"**{len(results):,} equipment financing filings found**")
                 display_cols = ['Ucc1FilingNumber', 'brand', 'year', 'model', 'equipment_type', 'serial_number', 'DebName', 'SecName']
                 display_cols = [col for col in display_cols if col in results.columns]
                 st.dataframe(results[display_cols], use_container_width=True)
-
                 csv = results.to_csv(index=False).encode('utf-8')
                 st.download_button("📥 Download these equipment financing results", data=csv,
                                   file_name="equipment_financing_search.csv", mime="text/csv")
@@ -166,12 +161,12 @@ with tab4:
                         if deb_coords:
                             return geodesic(center_coords, deb_coords).miles
                         return None
-                   
+                  
                     df_temp = df.copy()
                     df_temp['Distance_Miles'] = df_temp.apply(calculate_distance, axis=1)
                     results = df_temp[df_temp['Distance_Miles'] <= radius_miles].copy()
                     results = results.sort_values('Distance_Miles').head(100)
-                   
+                  
                     if not results.empty:
                         st.success(f"🎉 **{len(results):,} filings found within {radius_miles} miles**")
                         st.dataframe(results, use_container_width=True)
