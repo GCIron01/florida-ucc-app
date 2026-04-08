@@ -29,23 +29,14 @@ with st.sidebar:
     st.markdown("✅ **No ads • Clean interface**")
     st.success("**Only $19/month** — Cancel anytime")
 
-# ====================== HARD-CODED WORKING CONNECTION ======================
+# ====================== WORKING CONNECTION ======================
 DB_URL = "postgresql://postgres.kffjahvpapxekbjfhinm:%21Lift1000o7@aws-1-us-east-2.pooler.supabase.com:5432/postgres"
 
 @st.cache_data(ttl=7200, show_spinner="Loading Construction & Equipment Filings…")
 def load_data():
     try:
         conn = psycopg2.connect(DB_URL, connect_timeout=10)
-        query = """
-            SELECT 
-                "Ucc1FilingNumber", "DebName", "DebNameFormat", "DebAddressLine1", "DebAddressLine2",
-                "DebCity", "DebState", "DebZipCode", "DebCountry", "DebRefNumber",
-                "SecName", "SecNameFormat", "SecAddressLine1", "SecAddressLine2", "SecCity",
-                "SecStateProvince", "SecZipCode", "SecCountry", "SecRefNumber",
-                "brand", "year", "model", "equipment_type", "serial_number"
-            FROM construction_equipment_filings
-        """
-        df = pd.read_sql(query, conn)
+        df = pd.read_sql("SELECT * FROM construction_equipment_filings", conn)
         conn.close()
         st.success(f"✅ Connected to Supabase — {len(df):,} clean records loaded")
         return df
@@ -68,17 +59,6 @@ def get_zip_coordinates(zip_code):
     if pd.isna(location.latitude) or pd.isna(location.longitude):
         return None
     return (location.latitude, location.longitude)
-
-# ====================== REORDER COLUMNS ======================
-desired_order = [
-    'Ucc1FilingNumber', 'DebName', 'DebNameFormat', 'DebAddressLine1', 'DebAddressLine2',
-    'DebCity', 'DebState', 'DebZipCode', 'DebCountry', 'DebRefNumber',
-    'SecName', 'SecNameFormat', 'SecAddressLine1', 'SecAddressLine2', 'SecCity',
-    'SecStateProvince', 'SecZipCode', 'SecCountry', 'SecRefNumber',
-    'brand', 'year', 'model', 'equipment_type', 'serial_number'
-]
-available_cols = [col for col in desired_order if col in df.columns]
-df = df[available_cols]
 
 # ====================== TABS ======================
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
@@ -104,9 +84,6 @@ with tab2:
             if not results.empty:
                 st.success(f"**{mask.sum():,} matches found**")
                 st.dataframe(results, use_container_width=True)
-                csv = results.to_csv(index=False).encode('utf-8')
-                st.download_button("📥 Download results as CSV", data=csv,
-                                  file_name=f"ucc_search_{search_term.replace(' ', '_')}.csv", mime="text/csv")
             else:
                 st.warning("No matches found")
 
@@ -131,11 +108,9 @@ with tab3:
             results = df[mask].copy()
             if not results.empty:
                 st.success(f"**{len(results):,} equipment financing filings found**")
-                display_cols = ['Ucc1FilingNumber', 'brand', 'year', 'model', 'equipment_type', 'serial_number', 'DebName', 'SecName']
+                display_cols = ['Ucc1FilingNumber', 'brand', 'model', 'equipment_type', 'serial_number', 'DebName', 'SecName']
                 display_cols = [col for col in display_cols if col in results.columns]
                 st.dataframe(results[display_cols], use_container_width=True)
-                csv = results.to_csv(index=False).encode('utf-8')
-                st.download_button("📥 Download results", data=csv, file_name="equipment_financing_search.csv", mime="text/csv")
             else:
                 st.warning("No matching equipment filings found.")
 
@@ -161,18 +136,13 @@ with tab4:
                         if deb_coords:
                             return geodesic(center_coords, deb_coords).miles
                         return None
-                  
                     df_temp = df.copy()
                     df_temp['Distance_Miles'] = df_temp.apply(calculate_distance, axis=1)
                     results = df_temp[df_temp['Distance_Miles'] <= radius_miles].copy()
                     results = results.sort_values('Distance_Miles').head(100)
-                  
                     if not results.empty:
                         st.success(f"🎉 **{len(results):,} filings found within {radius_miles} miles**")
                         st.dataframe(results, use_container_width=True)
-                        csv = results.to_csv(index=False).encode('utf-8')
-                        st.download_button("📥 Download Full Results", data=csv,
-                                          file_name=f"radius_search_{zip_code}_{radius_miles}miles.csv", mime="text/csv")
                     else:
                         st.warning("No filings found in this radius.")
         else:
@@ -182,14 +152,6 @@ with tab5:
     st.subheader("📋 Recent UCC Filings — Live Preview")
     preview = df.head(20).copy()
     st.dataframe(preview, use_container_width=True)
-    csv_all = preview.to_csv(index=False).encode('utf-8')
-    st.download_button("📥 Download these 20 recent filings", data=csv_all,
-                      file_name="ucc_recent_filings_sample.csv", mime="text/csv")
-    st.caption("Sortable table • Full unlimited export after subscription")
 
 st.markdown("---")
-st.subheader("💰 Ready to unlock everything?")
-if st.button("✅ Subscribe Now — $19/month (cancel anytime)", type="primary", use_container_width=True):
-    st.markdown("[🚀 Go to Secure Stripe Checkout →](https://buy.stripe.com/YOUR_REAL_LINK_HERE)")
-
 st.caption(f"Database updated {datetime.now().strftime('%b %d, %Y')} • {len(df):,} records • Data from official Florida UCC")
