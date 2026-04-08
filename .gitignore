@@ -1,3 +1,14 @@
-*.csv
-.DS_Store
+# Ignore big/temp folders and files
+tiffs/
+full_downloads/
+sunbiz_quarterly/
+*.db
+*.rtf
+*.rtfd
+*.png
+*.tif
+__pycache__/
+*.pyc
 archive/
+test_*.py
+*.txt
