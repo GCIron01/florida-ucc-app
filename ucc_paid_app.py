@@ -29,16 +29,16 @@ with st.sidebar:
     st.markdown("✅ **No ads • Clean interface**")
     st.success("**Only $19/month** — Cancel anytime")
 
-# ====================== WORKING CONNECTION ======================
+# ====================== CONNECTION ======================
 DB_URL = "postgresql://postgres.kffjahvpapxekbjfhinm:%21Lift1000o7@aws-1-us-east-2.pooler.supabase.com:5432/postgres"
 
 @st.cache_data(ttl=7200, show_spinner="Loading Construction & Equipment Filings…")
 def load_data():
     try:
         conn = psycopg2.connect(DB_URL, connect_timeout=10)
-        df = pd.read_sql("SELECT * FROM construction_equipment_filings", conn)
+        df = pd.read_sql("SELECT * FROM construction_equipment_filings_v2", conn)
         conn.close()
-        st.success(f"✅ Connected to Supabase — {len(df):,} clean records loaded")
+        st.success(f"✅ Connected to Supabase — {len(df):,} key lender records loaded")
         return df
     except Exception as e:
         st.error(f"❌ Connection error: {str(e)}")
