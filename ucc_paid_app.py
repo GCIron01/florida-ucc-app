@@ -202,8 +202,13 @@ with tab6:
     st.markdown("**Debtors with the most UCC filings in the database**")
 
     if not df.empty:
-        # Use the new enriched table (has full debtor info)
-        top_debtors = df.groupby(['DebName', 'DebAddressLine1', 'DebCity', 'DebStateProvince', 'DebZipCode']).agg(
+        # Load the enriched table that has full debtor info
+        conn = psycopg2.connect(DB_URL, connect_timeout=10)
+        enriched_df = pd.read_sql("SELECT * FROM construction_equipment_with_debtors", conn)
+        conn.close()
+
+        # Group by debtor
+        top_debtors = enriched_df.groupby(['DebName', 'DebAddressLine1', 'DebCity', 'DebStateProvince', 'DebZipCode']).agg(
             total_filings=('Ucc1FilingNumber', 'count'),
             unique_secured=('SecName', 'nunique')
         ).reset_index()
@@ -216,8 +221,10 @@ with tab6:
             " " + top_debtors['DebZipCode'].fillna('')
         ).str.strip(', ')
 
+        # Sort by most filings
         top_debtors = top_debtors.sort_values('total_filings', ascending=False)
 
+        # Display
         display_cols = ['DebName', 'Address', 'total_filings', 'unique_secured']
         st.dataframe(
             top_debtors[display_cols].head(50).rename(columns={
