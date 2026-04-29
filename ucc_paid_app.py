@@ -199,10 +199,10 @@ with tab5:
 
 with tab6:
     st.subheader("🏆 Top Debtors by Number of Filings")
-    st.markdown("**Debtors with the most UCC filings in the database**")
+    st.markdown("**Florida debtors with the most UCC filings**")
 
     if not df.empty:
-        # Load the enriched table that has full debtor info
+        # Load the enriched table (has full debtor info)
         conn = psycopg2.connect(DB_URL, connect_timeout=10)
         enriched_df = pd.read_sql("SELECT * FROM construction_equipment_with_debtors", conn)
         conn.close()
@@ -210,7 +210,8 @@ with tab6:
         # Group by debtor
         top_debtors = enriched_df.groupby(['DebName', 'DebAddressLine1', 'DebCity', 'DebStateProvince', 'DebZipCode']).agg(
             total_filings=('Ucc1FilingNumber', 'count'),
-            unique_secured=('SecName', 'nunique')
+            unique_secured_count=('SecName', 'nunique'),
+            unique_secured_names=('SecName', lambda x: ', '.join(sorted(x.unique())))
         ).reset_index()
 
         # Create clean address
@@ -224,19 +225,23 @@ with tab6:
         # Sort by most filings
         top_debtors = top_debtors.sort_values('total_filings', ascending=False)
 
+        # Let user choose how many rows to display
+        num_rows = st.slider("Show top N debtors", min_value=10, max_value=500, value=100, step=10)
+
         # Display
-        display_cols = ['DebName', 'Address', 'total_filings', 'unique_secured']
+        display_cols = ['DebName', 'Address', 'total_filings', 'unique_secured_count', 'unique_secured_names']
         st.dataframe(
-            top_debtors[display_cols].head(50).rename(columns={
+            top_debtors[display_cols].head(num_rows).rename(columns={
                 'DebName': 'Debtor Name',
                 'total_filings': 'Total Filings',
-                'unique_secured': 'Unique Secured Parties'
+                'unique_secured_count': 'Unique Secured Parties (Count)',
+                'unique_secured_names': 'Unique Secured Parties (Names)'
             }),
             use_container_width=True,
             hide_index=True
         )
 
-        st.caption("Showing top 50 debtors • Full list available after subscription")
+        st.caption(f"Showing top {num_rows} debtors • Full list available after subscription")
     else:
         st.warning("No data available")        
 st.markdown("---")
