@@ -202,38 +202,42 @@ with tab6:
     st.markdown("**Debtors with the most UCC filings in the database**")
 
     if not df.empty:
-        # Group by debtor and calculate stats
-        top_debtors = df.groupby(['DebName', 'DebAddressLine1', 'DebCity', 'DebState', 'DebZipCode']).agg(
+        # Use only columns that actually exist in v2 table
+        group_cols = ['DebName']
+        if 'DebCity' in df.columns:
+            group_cols.append('DebCity')
+        if 'debcounty' in df.columns:
+            group_cols.append('debcounty')
+
+        top_debtors = df.groupby(group_cols).agg(
             total_filings=('Ucc1FilingNumber', 'count'),
             unique_secured=('SecName', 'nunique')
         ).reset_index()
 
-        # Create clean address column
-        top_debtors['Address'] = (
-            top_debtors['DebAddressLine1'].fillna('') + 
-            ", " + top_debtors['DebCity'].fillna('') + 
-            ", " + top_debtors['DebState'].fillna('') + 
-            " " + top_debtors['DebZipCode'].fillna('')
-        ).str.strip(', ')
+        # Create a simple address from available columns
+        top_debtors['Address'] = top_debtors.get('DebCity', '').fillna('') 
+        if 'debcounty' in top_debtors.columns:
+            top_debtors['Address'] = top_debtors['Address'].astype(str) + ", " + top_debtors['debcounty'].fillna('')
 
         # Sort by most filings
         top_debtors = top_debtors.sort_values('total_filings', ascending=False)
 
-        # Display nice table
+        # Display clean table
         display_cols = ['DebName', 'Address', 'total_filings', 'unique_secured']
+        rename_dict = {
+            'DebName': 'Debtor Name',
+            'total_filings': 'Total Filings',
+            'unique_secured': 'Unique Secured Parties'
+        }
+        
         st.dataframe(
-            top_debtors[display_cols].head(50).rename(columns={
-                'DebName': 'Debtor Name',
-                'total_filings': 'Total Filings',
-                'unique_secured': 'Unique Secured Parties'
-            }),
+            top_debtors[display_cols].head(50).rename(columns=rename_dict),
             use_container_width=True,
             hide_index=True
         )
 
         st.caption("Showing top 50 debtors • Full list available after subscription")
     else:
-        st.warning("No data available")
-        
+        st.warning("No data available")        
 st.markdown("---")
 st.caption(f"Database updated {datetime.now().strftime('%b %d, %Y')} • {len(df):,} records • Data from official Florida UCC")
