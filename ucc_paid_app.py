@@ -202,36 +202,29 @@ with tab6:
     st.markdown("**Debtors with the most UCC filings in the database**")
 
     if not df.empty:
-        # Use only columns that actually exist in v2 table
-        group_cols = ['DebName']
-        if 'DebCity' in df.columns:
-            group_cols.append('DebCity')
-        if 'debcounty' in df.columns:
-            group_cols.append('debcounty')
-
-        top_debtors = df.groupby(group_cols).agg(
+        # Use the new enriched table (has full debtor info)
+        top_debtors = df.groupby(['DebName', 'DebAddressLine1', 'DebCity', 'DebStateProvince', 'DebZipCode']).agg(
             total_filings=('Ucc1FilingNumber', 'count'),
             unique_secured=('SecName', 'nunique')
         ).reset_index()
 
-        # Create a simple address from available columns
-        top_debtors['Address'] = top_debtors.get('DebCity', '').fillna('') 
-        if 'debcounty' in top_debtors.columns:
-            top_debtors['Address'] = top_debtors['Address'].astype(str) + ", " + top_debtors['debcounty'].fillna('')
+        # Create clean address
+        top_debtors['Address'] = (
+            top_debtors['DebAddressLine1'].fillna('') + 
+            ", " + top_debtors['DebCity'].fillna('') + 
+            ", " + top_debtors['DebStateProvince'].fillna('') + 
+            " " + top_debtors['DebZipCode'].fillna('')
+        ).str.strip(', ')
 
-        # Sort by most filings
         top_debtors = top_debtors.sort_values('total_filings', ascending=False)
 
-        # Display clean table
         display_cols = ['DebName', 'Address', 'total_filings', 'unique_secured']
-        rename_dict = {
-            'DebName': 'Debtor Name',
-            'total_filings': 'Total Filings',
-            'unique_secured': 'Unique Secured Parties'
-        }
-        
         st.dataframe(
-            top_debtors[display_cols].head(50).rename(columns=rename_dict),
+            top_debtors[display_cols].head(50).rename(columns={
+                'DebName': 'Debtor Name',
+                'total_filings': 'Total Filings',
+                'unique_secured': 'Unique Secured Parties'
+            }),
             use_container_width=True,
             hide_index=True
         )
