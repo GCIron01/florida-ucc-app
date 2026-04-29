@@ -124,7 +124,7 @@ with tab4:
     with col_b:
         radius_miles = st.slider("Search Radius (miles)", min_value=5, max_value=150, value=25, step=5)
 
-    # === Filters (safe - only show if column exists) ===
+    # === Filters (City, County, MSA) ===
     selected_cities = []
     if 'DebCity' in df.columns:
         city_list = sorted(df['DebCity'].dropna().unique())
@@ -147,7 +147,7 @@ with tab4:
                 if center_coords is None:
                     st.error("❌ Invalid zip code or no coordinates found.")
                 else:
-                    # Use SecZipCode (the only zip code available in v2)
+                    # Use SecZipCode (only zip available in v2 table)
                     def calculate_distance(row):
                         if pd.isna(row.get('SecZipCode')):
                             return None
@@ -172,9 +172,20 @@ with tab4:
                     
                     if not results.empty:
                         st.success(f"🎉 **{len(results):,} filings found within {radius_miles} miles**")
-                        # Show useful debtor + filing columns
-                        display_cols = ['Ucc1FilingNumber', 'DebName', 'DebCity', 'debcounty', 'msa', 
-                                       'SecName', 'Distance_Miles', 'brand', 'model', 'equipment_type']
+                        
+                        # DEBTOR-FOCUSED COLUMNS FIRST
+                        display_cols = [
+                            'Ucc1FilingNumber', 
+                            'DebName', 
+                            'DebCity', 
+                            'debcounty', 
+                            'msa',
+                            'Distance_Miles',
+                            'brand', 
+                            'model', 
+                            'equipment_type',
+                            'SecName'   # Secured party last
+                        ]
                         display_cols = [col for col in display_cols if col in results.columns]
                         st.dataframe(results[display_cols], use_container_width=True)
                     else:
