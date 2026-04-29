@@ -147,7 +147,6 @@ with tab4:
                 if center_coords is None:
                     st.error("❌ Invalid zip code or no coordinates found.")
                 else:
-                    # Use SecZipCode (only zip available in v2 table)
                     def calculate_distance(row):
                         if pd.isna(row.get('SecZipCode')):
                             return None
@@ -175,16 +174,16 @@ with tab4:
                         
                         # DEBTOR-FOCUSED COLUMNS FIRST
                         display_cols = [
-                            'Ucc1FilingNumber', 
-                            'DebName', 
-                            'DebCity', 
-                            'debcounty', 
+                            'Ucc1FilingNumber',
+                            'DebName',          # Debtor name first
+                            'DebCity',
+                            'debcounty',
                             'msa',
                             'Distance_Miles',
-                            'brand', 
-                            'model', 
+                            'brand',
+                            'model',
                             'equipment_type',
-                            'SecName'   # Secured party last
+                            'SecName'           # Secured party last
                         ]
                         display_cols = [col for col in display_cols if col in results.columns]
                         st.dataframe(results[display_cols], use_container_width=True)
