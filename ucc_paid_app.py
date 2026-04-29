@@ -124,13 +124,21 @@ with tab4:
     with col_b:
         radius_miles = st.slider("Search Radius (miles)", min_value=5, max_value=150, value=25, step=5)
 
-    # === City filter (works immediately) ===
+    # === Filters (safe - only show if column exists) ===
     selected_cities = []
     if 'DebCity' in df.columns:
         city_list = sorted(df['DebCity'].dropna().unique())
-        selected_cities = st.multiselect("Filter by City (optional)", options=city_list, default=[])
-    else:
-        st.info("City filter coming soon")
+        selected_cities = st.multiselect("Filter by City", options=city_list, default=[])
+
+    selected_counties = []
+    if 'debcounty' in df.columns:
+        county_list = sorted(df['debcounty'].dropna().unique())
+        selected_counties = st.multiselect("Filter by County", options=county_list, default=[])
+
+    selected_msa = []
+    if 'msa' in df.columns:
+        msa_list = sorted(df['msa'].dropna().unique())
+        selected_msa = st.multiselect("Filter by MSA", options=msa_list, default=[])
 
     if st.button("🔍 Search Within Radius", type="primary", use_container_width=True):
         if len(zip_code) == 5 and zip_code.isdigit():
@@ -139,27 +147,36 @@ with tab4:
                 if center_coords is None:
                     st.error("❌ Invalid zip code or no coordinates found.")
                 else:
+                    # Use SecZipCode (the only zip code available in v2)
                     def calculate_distance(row):
-                        if pd.isna(row.get('DebZipCode')):
+                        if pd.isna(row.get('SecZipCode')):
                             return None
-                        deb_coords = get_zip_coordinates(str(int(row['DebZipCode'])))
-                        if deb_coords:
-                            return geodesic(center_coords, deb_coords).miles
+                        sec_coords = get_zip_coordinates(str(row['SecZipCode']).strip()[:5])
+                        if sec_coords:
+                            return geodesic(center_coords, sec_coords).miles
                         return None
                     
                     df_temp = df.copy()
                     df_temp['Distance_Miles'] = df_temp.apply(calculate_distance, axis=1)
                     results = df_temp[df_temp['Distance_Miles'] <= radius_miles].copy()
                     
-                    # Apply City filter
+                    # Apply filters
                     if selected_cities and 'DebCity' in results.columns:
                         results = results[results['DebCity'].isin(selected_cities)]
+                    if selected_counties and 'debcounty' in results.columns:
+                        results = results[results['debcounty'].isin(selected_counties)]
+                    if selected_msa and 'msa' in results.columns:
+                        results = results[results['msa'].isin(selected_msa)]
                     
                     results = results.sort_values('Distance_Miles').head(100)
                     
                     if not results.empty:
                         st.success(f"🎉 **{len(results):,} filings found within {radius_miles} miles**")
-                        st.dataframe(results, use_container_width=True)
+                        # Show useful debtor + filing columns
+                        display_cols = ['Ucc1FilingNumber', 'DebName', 'DebCity', 'debcounty', 'msa', 
+                                       'SecName', 'Distance_Miles', 'brand', 'model', 'equipment_type']
+                        display_cols = [col for col in display_cols if col in results.columns]
+                        st.dataframe(results[display_cols], use_container_width=True)
                     else:
                         st.warning("No filings found in this radius.")
         else:
