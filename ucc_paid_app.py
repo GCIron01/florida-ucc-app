@@ -61,8 +61,8 @@ def get_zip_coordinates(zip_code):
     return (location.latitude, location.longitude)
 
 # ====================== TABS ======================
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "📊 Stats", "🔍 Name Search", "🏗️ Equipment Financing", "📍 Radius Search", "📋 Recent Filings"
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    "📊 Stats", "🔍 Name Search", "🏗️ Equipment Financing", "📍 Radius Search", "📋 Recent Filings", "🏆 Top Debtors"
 ])
 
 with tab1:
@@ -197,5 +197,43 @@ with tab5:
     preview = df.head(20).copy()
     st.dataframe(preview, use_container_width=True)
 
+with tab6:
+    st.subheader("🏆 Top Debtors by Number of Filings")
+    st.markdown("**Debtors with the most UCC filings in the database**")
+
+    if not df.empty:
+        # Group by debtor and calculate stats
+        top_debtors = df.groupby(['DebName', 'DebAddressLine1', 'DebCity', 'DebState', 'DebZipCode']).agg(
+            total_filings=('Ucc1FilingNumber', 'count'),
+            unique_secured=('SecName', 'nunique')
+        ).reset_index()
+
+        # Create clean address column
+        top_debtors['Address'] = (
+            top_debtors['DebAddressLine1'].fillna('') + 
+            ", " + top_debtors['DebCity'].fillna('') + 
+            ", " + top_debtors['DebState'].fillna('') + 
+            " " + top_debtors['DebZipCode'].fillna('')
+        ).str.strip(', ')
+
+        # Sort by most filings
+        top_debtors = top_debtors.sort_values('total_filings', ascending=False)
+
+        # Display nice table
+        display_cols = ['DebName', 'Address', 'total_filings', 'unique_secured']
+        st.dataframe(
+            top_debtors[display_cols].head(50).rename(columns={
+                'DebName': 'Debtor Name',
+                'total_filings': 'Total Filings',
+                'unique_secured': 'Unique Secured Parties'
+            }),
+            use_container_width=True,
+            hide_index=True
+        )
+
+        st.caption("Showing top 50 debtors • Full list available after subscription")
+    else:
+        st.warning("No data available")
+        
 st.markdown("---")
 st.caption(f"Database updated {datetime.now().strftime('%b %d, %Y')} • {len(df):,} records • Data from official Florida UCC")
